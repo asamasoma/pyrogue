@@ -86,10 +86,13 @@ def make_map():
     create_room(room2)
 
     create_h_tunnel(25, 55, 23)
-    
+
+    player.x = 25
+    player.y = 23
+
 def render_all():
-    global color_light_wall
-    global color_light_ground
+    global color_dark_wall, color_light_wall
+    global color_dark_ground, color_light_ground
     #go through all tiles, and set their background color
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
@@ -99,12 +102,12 @@ def render_all():
             else:
                 libtcod.console_set_char_background(con, x, y, color_dark_ground, libtcod.BKGND_SET )
 
-            #draw all objects in the list
-            for object in objects:
-                object.draw()
+    #draw all objects in the list
+    for object in objects:
+        object.draw()
 
-            #blit the contents of "con" to the root console
-            libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
+    #blit the contents of "con" to the root console
+    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
 def handle_keys():
     global playerx, playery
@@ -141,7 +144,7 @@ libtcod.sys_set_fps(LIMIT_FPS)
 
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-player = Object(25, 23, '@', libtcod.white)
+player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', libtcod.white)
 npc = Object(SCREEN_WIDTH/2 - 5, SCREEN_HEIGHT/2, '@', libtcod.yellow)
 objects = [npc, player]
 
