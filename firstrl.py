@@ -51,15 +51,17 @@ class Rect:
 class Object:
     #this is a generic object: the player, a monster, an item, the stairs...
     #it's always represented by a character on screen
-    def __init__(self, x, y, char, color):
+    def __init__(self, x, y, char, name, color, blocks=False):
         self.x = x
         self.y = y
         self.char = char
+        self.name = name
         self.color = color
+        self.blocks = blocks
 
     def move(self, dx, dy):
         #move by the given amount
-        if not map[self.x + dx][self.y + dy].blocked:
+        if not is_blocked(self.x + dx, self.y + dy):
             self.x += dx
             self.y += dy
 
@@ -74,6 +76,20 @@ class Object:
         #erase the character that represents this object
         libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
 
+
+def is_blocked(x, y):
+    global map
+    #first test the map tile
+    if map[x][y].blocked:
+        return True
+
+    #now check for any blocking objects
+    for object in objects:
+        if object.blocks and object.x == x and object.y == y:
+            return True
+
+    return False
+    
 def create_room(room):
     global map
     #go through the tiles in the rectangle and make them passable
@@ -104,15 +120,15 @@ def place_objects(room):
         #choose random spot for this monster
         x = libtcod.random_get_int(0, room.x1, room.x2)
         y = libtcod.random_get_int(0, room.y1, room.y2)
+        if not is_blocked(x, y):
+            if libtcod.random_get_int(0, 0, 100) < 80: #80% chance of getting an orc
+                #create an orc
+                monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green, blocks=True)
+            else:
+                #create a troll
+                monster = Object(x, y, 'T', 'troll', libtcod.darker_green, blocks=True)
 
-        if libtcod.random_get_int(0, 0, 100) < 80: #80% chance of getting an orc
-            #create an orc
-            monster = Object(x, y, 'o', libtcod.desaturated_green)
-        else:
-            #create a troll
-            monster = Object(x, y, 'T', libtcod.darker_green)
-
-        objects.append(monster)
+            objects.append(monster)
         
 def make_map():
     global map, player
@@ -258,7 +274,7 @@ libtcod.sys_set_fps(LIMIT_FPS)
 
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', libtcod.white)
+player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', 'player', libtcod.white)
 
 objects = [player]
 
