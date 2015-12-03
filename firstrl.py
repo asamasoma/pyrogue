@@ -6,7 +6,12 @@ SCREEN_HEIGHT = 50
 LIMIT_FPS = 20
 
 MAP_WIDTH = 80
-MAP_HEIGHT = 45
+MAP_HEIGHT = 43
+
+#sizes and coordinates relevant for the GUI
+BAR_WIDTH = 20
+PANEL_HEIGHT = 7
+PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 
 FOV_ALGO = 0
 FOV_LIGHT_WALLS = True
@@ -300,6 +305,24 @@ def make_map():
             rooms.append(new_room)
             num_rooms += 1
 
+def render_bar(x, y, total_width, name, value, maximum, bar_color, back_color):
+    #render a bar (HP, experience, etc). first calculate the width of the bar
+    bar_width = int(float(value) / maximum * total_width)
+
+    #render the background first
+    libtcod.console_set_default_background(panel, back_color)
+    libtcod.console_rect(panel, x, y, total_width, 1, False, libtcod.BKGND_SCREEN)
+
+    #now render the bar on top
+    libtcod.console_set_default_background(panel, bar_color)
+    if bar_width > 0:
+        libtcod.console_rect(panel, x, y, bar_width, 1, False, libtcod.BKGND_SCREEN)
+
+    #finally, some centered text with the values
+    libtcod.console_set_default_foreground(panel, libtcod.white)
+    libtcod.console_print_ex(panel, x + total_width / 2, y, libtcod.BKGND_NONE, libtcod.CENTER,
+        name + ': ' + str(value) + '/' + str(maximum))
+
 def render_all():
     global color_dark_wall, color_light_wall
     global color_dark_ground, color_light_ground
@@ -338,12 +361,21 @@ def render_all():
         player.draw()
 
     #blit the contents of "con" to the root console
-    libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
+    libtcod.console_blit(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
 
     #show the player's stats
     libtcod.console_set_default_foreground(con, libtcod.white)
-    libtcod.console_print_ex(0, 1, SCREEN_HEIGHT - 2, libtcod.BKGND_NONE, libtcod.LEFT,
-        'HP: ' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp))
+    
+    #prepare to render the GUI panel
+    libtcod.console_set_default_background(panel, libtcod.black)
+    libtcod.console_clear(panel)
+
+    #show the player's stats
+    render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
+        libtcod.light_red, libtcod.darker_red)
+
+    #blit the contents of "panel" to the root console
+    libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
 
 def player_move_or_attack(dx, dy):
     global fov_recompute
@@ -407,7 +439,8 @@ libtcod.console_set_custom_font('arial10x10.png', libtcod.FONT_TYPE_GREYSCALE | 
 libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False)
 libtcod.sys_set_fps(LIMIT_FPS)
 
-con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
+con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
+panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
 fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
 player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
