@@ -110,6 +110,22 @@ class Fighter:
         self.defense = defense
         self.power = power
 
+    def take_damage(self, damage):
+        #apply damage if possible
+        if damage > 0:
+            self.hp -= damage
+
+    def attack(self, target):
+        #a simple formula for attack damage
+        damage = self.power - target.fighter.defense
+
+        if damage > 0:
+            #make the target take some damage
+            print self.owner.name.capitalize() + ' attacks ' + target.name + ' for ' + str(damage) + ' hit points.'
+            target.fighter.take_damage(damage)
+        else:
+            print self.owner.name.capitalize() + ' attacks ' + target.name + ' but it has no effect!'
+
 class BasicMonster:
     #AI for a basic monster.
     def take_turn(self):
@@ -123,7 +139,7 @@ class BasicMonster:
 
             #close enough, attack! (if the player is still alive.)
             elif player.fighter.hp > 0:
-                print 'The attack of the ' + monster.name + ' bounces off your shiny metal armor!'
+                monster.fighter.attack(player)
 
 def is_blocked(x, y):
     global map
@@ -288,6 +304,11 @@ def render_all():
     #blit the contents of "con" to the root console
     libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
+    #show the player's stats
+    libtcod.console_set_default_foreground(con, libtcod.white)
+    libtcod.console_print_ex(0, 1, SCREEN_HEIGHT - 2, libtcod.BKGND_NONE, libtcod.LEFT,
+        'HP: ' + str(player.fighter.hp) + '/' + str(player.fighter.max_hp))
+    
 def player_move_or_attack(dx, dy):
     global fov_recompute
 
@@ -304,7 +325,7 @@ def player_move_or_attack(dx, dy):
 
     #attack if target found, move otherwise
     if target is not None:
-        print 'The ' + target.name + ' laughs at your puny efforts to attack him!'
+        player.fighter.attack(target)
     else:
         player.move(dx, dy)
         fov_recompute = True
