@@ -51,13 +51,20 @@ class Rect:
 class Object:
     #this is a generic object: the player, a monster, an item, the stairs...
     #it's always represented by a character on screen
-    def __init__(self, x, y, char, name, color, blocks=False):
+    def __init__(self, x, y, char, name, color, blocks=False, fighter=None, ai=None):
         self.x = x
         self.y = y
         self.char = char
         self.name = name
         self.color = color
         self.blocks = blocks
+        self.fighter = fighter
+        if self.fighter: #let the fighter component know who owns it
+            self.fighter.owner = self
+
+        self.ai = ai
+        if self.ai: #let the AI component know who owns it
+            self.ai.owner = self
 
     def move(self, dx, dy):
         #move by the given amount
@@ -75,6 +82,19 @@ class Object:
     def clear(self):
         #erase the character that represents this object
         libtcod.console_put_char(con, self.x, self.y, ' ', libtcod.BKGND_NONE)
+
+class Fighter:
+    #combat-related properties and methods (monster, player, NPC).
+    def __init__(self, hp, defense, power):
+        self.max_hp = hp
+        self.hp = hp
+        self.defense = defense
+        self.power = power
+
+class BasicMonster:
+    #AI for a basic monster.
+    def take_turn(self):
+        print 'The ' + self.owner.name + ' growls!'
 
 
 def is_blocked(x, y):
@@ -123,10 +143,16 @@ def place_objects(room):
         if not is_blocked(x, y):
             if libtcod.random_get_int(0, 0, 100) < 80: #80% chance of getting an orc
                 #create an orc
-                monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green, blocks=True)
+                fighter_component = Fighter(hp=10, defense=0, power=3)
+                ai_component = BasicMonster()
+                monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
+                    blocks=True, fighter=fighter_component, ai=ai_component)
             else:
                 #create a troll
-                monster = Object(x, y, 'T', 'troll', libtcod.darker_green, blocks=True)
+                fighter_component = Fighter(hp=16, defense=1, power=4)
+                ai_component = BasicMonster()
+                monster = Object(x, y, 'T', 'troll', libtcod.darker_green,
+                    blocks=True, fighter=fighter_component, ai=ai_component)
 
             objects.append(monster)
         
@@ -298,7 +324,8 @@ libtcod.sys_set_fps(LIMIT_FPS)
 
 con = libtcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', 'player', libtcod.white)
+fighter_component = Fighter(hp=30, defense=2, power=5)
+player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
 
 objects = [player]
 
