@@ -244,24 +244,27 @@ def handle_keys():
         libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
     elif key.vk == libtcod.KEY_ESCAPE:
-        return True  #exit game
+        return 'exit'  #exit game
 
     #movement keys
-    if libtcod.console_is_key_pressed(libtcod.KEY_UP):
-        player.move(0, -1)
-        fov_recompute = True
+    if game_state == 'playing':
+        if libtcod.console_is_key_pressed(libtcod.KEY_UP):
+            player.move(0, -1)
+            fov_recompute = True
 
-    elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
-        player.move(0, 1)
-        fov_recompute = True
+        elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
+            player.move(0, 1)
+            fov_recompute = True
 
-    elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
-        player.move(-1, 0)
-        fov_recompute = True
+        elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
+            player.move(-1, 0)
+            fov_recompute = True
 
-    elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
-        player.move(1, 0)
-        fov_recompute = True
+        elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
+            player.move(1, 0)
+            fov_recompute = True
+        else:
+            return 'didnt-take-turn'
 
 
 ##############################
@@ -286,6 +289,8 @@ for y in range(MAP_HEIGHT):
         libtcod.map_set_properties(fov_map, x, y, not map[x][y].block_sight, not map[x][y].blocked)
 
 fov_recompute = True
+game_state = 'playing'
+player_action = None
 
 while not libtcod.console_is_window_closed():
 
@@ -297,6 +302,6 @@ while not libtcod.console_is_window_closed():
         object.clear()
 
     #handle keys and exit game if needed
-    exit = handle_keys()
-    if exit:
+    player_action = handle_keys()
+    if player_action == 'exit':
         break
