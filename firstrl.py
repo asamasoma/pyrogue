@@ -234,6 +234,27 @@ def render_all():
     #blit the contents of "con" to the root console
     libtcod.console_blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
 
+def player_move_or_attack(dx, dy):
+    global fov_recompute
+
+    #the coordinates the player is moving to/attacking
+    x = player.x + dx
+    y = player.y + dy
+
+    #try to find an attackable object there
+    target = None
+    for object in objects:
+        if object.x == x and object.y == y:
+            target = object
+            break
+
+    #attack if target found, move otherwise
+    if target is not None:
+        print 'The ' + target.name + ' laughs at your puny efforts to attack him!'
+    else:
+        player.move(dx, dy)
+        fov_recompute = True
+    
 def handle_keys():
     global fov_recompute
 
@@ -249,22 +270,22 @@ def handle_keys():
     #movement keys
     if game_state == 'playing':
         if libtcod.console_is_key_pressed(libtcod.KEY_UP):
-            player.move(0, -1)
+            player_move_or_attack(0, -1)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
-            player.move(0, 1)
+            player_move_or_attack(0, 1)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
-            player.move(-1, 0)
+            player_move_or_attack(-1, 0)
             fov_recompute = True
 
         elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
-            player.move(1, 0)
+            player_move_or_attack(1, 0)
             fov_recompute = True
         else:
-            return 'didnt-take-turn'
+            return 'none'
 
 
 ##############################
@@ -303,5 +324,9 @@ while not libtcod.console_is_window_closed():
 
     #handle keys and exit game if needed
     player_action = handle_keys()
+    if game_state == 'playing' and player_action != 'none':
+        for object in objects:
+            if object != player:
+                print 'The ' + object.name + ' growls!'
     if player_action == 'exit':
         break
