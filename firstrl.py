@@ -244,7 +244,7 @@ class ConfusedMonster:
             self.num_turns -= 1
 
         else: #restore the previous AI (this one will be deleted because it's not referenced anymore)
-            self.owner.ai = self.old.ai
+            self.owner.ai = self.old_ai
             message('The ' + self.owner.name + ' is no longer confused!', libtcod.red)
 
 def player_death(player):
@@ -435,24 +435,46 @@ def create_v_tunnel(y1, y2, x):
         map[x][y].blocked = False
         map[x][y].block_sight = False
 
+def random_choice_index(chances):
+    dice = libtcod.random_get_int(0, 1, sum(chances))
+
+    #go through all chances, keeping the sum so far
+    running_sum = 0
+    choice = 0
+    for w in chances:
+        running_sum += w
+
+        #see if the dice landed in the part that corresponds to this choice
+        if dice <= running_sum:
+            return choice
+        choice += 1
+
+def random_choice(chances_dict):
+    #choose one option from dictionary of chances, returning its key
+    chances = chances_dict.values()
+    strings = chances_dict.keys()
+    return strings[random_choice_index(chances)]
+
 def place_objects(room):
     global objects
     
     #choose random number of monsters
     num_monsters = libtcod.random_get_int(0, 0, MAX_ROOM_MONSTERS)
+    monster_chances = {'orc': 80, 'troll': 20}
 
     for i in range(num_monsters):
         #choose random spot for this monster
         x = libtcod.random_get_int(0, room.x1+1, room.x2-1)
         y = libtcod.random_get_int(0, room.y1+1, room.y2-1)
         if not is_blocked(x, y):
-            if libtcod.random_get_int(0, 0, 100) < 80: #80% chance of getting an orc
+            choice = random_choice(monster_chances)
+            if choice == 'orc':
                 #create an orc
                 fighter_component = Fighter(hp=10, defense=0, power=3, xp=35, death_function=monster_death)
                 ai_component = BasicMonster()
                 monster = Object(x, y, 'o', 'orc', libtcod.desaturated_green,
                     blocks=True, fighter=fighter_component, ai=ai_component)
-            else:
+            elif choice == 'troll':
                 #create a troll
                 fighter_component = Fighter(hp=16, defense=1, power=4, xp=100, death_function=monster_death)
                 ai_component = BasicMonster()
@@ -463,6 +485,7 @@ def place_objects(room):
 
     #choose random number of items
     num_items = libtcod.random_get_int(0, 0, MAX_ROOM_ITEMS)
+    item_chances = {'heal': 70, 'lightning': 10, 'fireball': 10, 'confuse': 10}
 
     for i in range(num_items):
         #choose random spot for this item
@@ -471,21 +494,20 @@ def place_objects(room):
 
         #only place it if the tile is not blocked
         if not is_blocked(x, y):
-            dice = libtcod.random_get_int(0, 0, 100)
-            if dice < 70:
+            choice = random_choice(item_chances)
+            if choice == 'heal':
                 #create a healing potion (70% chance)
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion', libtcod.violet, always_visible=True, item=item_component)
-            elif dice < 70+10:
+            elif choice == 'lightning':
                 #create a lightning bolt scroll (10% chance)
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'scroll of lightning bolt', libtcod.light_yellow, always_visible=True, item=item_component)
-
-            elif dice < 70+10+10:
+            elif choice == 'fireball':
                 #create a fireball scroll (10% chance)
                 item_component = Item(use_function=cast_fireball)
                 item = Object(x, y, '#', 'scroll of fireball', libtcod.light_yellow, always_visible=True, item=item_component)
-            else:
+            elif choice == 'confuse':
                 #create a confuse scroll (10% chance)
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'scroll of confusion', libtcod.light_yellow, always_visible=True, item=item_component)
