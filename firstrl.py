@@ -151,6 +151,14 @@ class Item:
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '!', libtcod.green)
 
+    def drop(self):
+        #add to the map and remove from the player's inventory. also, place it at the player's coordinates
+        objects.append(self.owner)
+        inventory.remove(self.owner)
+        self.owner.x = player.x
+        self.owner.y = player.y
+        message('You dropped a ' + self.owner.name + '.', libtcod.yellow)
+
     def use(self):
         #just call the "use_function" if it is defined
         if self.use_function is None:
@@ -286,6 +294,18 @@ def target_tile(max_range=None):
         if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
             return (None, None)  #cancel if the player right-clicked or pressed Escape
 
+def target_monster(max_range=None):
+    #returns a clicked monster inside FOV up to a range, or None if right-clicked
+    while True:
+        (x, y) = target_tile(max_range)
+        if x is None:  #player cancelled
+            return None
+
+        #return the first clicked monster, otherwise continue looping
+        for obj in objects:
+            if obj.x == x and obj.y == y and obj.fighter and obj != player:
+                return obj
+
 def cast_heal():
     #heal the player
     if player.fighter.hp == player.fighter.max_hp:
@@ -320,11 +340,10 @@ def cast_fireball():
             obj.fighter.take_damage(FIREBALL_DAMAGE)
 
 def cast_confuse():
-    #find closest enemy in-range and confuse it
-    monster = closest_monster(CONFUSE_RANGE)
-    if monster is None:  #no enemy found within maximum range
-        message('No enemy is close enough to confuse.', libtcod.red)
-        return 'cancelled'
+    #ask the player for a target to confuse
+    message('Left-click an enemy to confuse it, or right-click to cancel.', libtcod.light_cyan)
+    monster = target_monster(CONFUSE_RANGE)
+    if monster is None: return 'cancelled'
 
     #replace the monster's AI with a "confused" one; after some turns it will restore the old AI
     old_ai = monster.ai
@@ -692,6 +711,12 @@ def handle_keys():
         else:
             #test for other keys
             key_char = chr(key.c)
+
+            if key_char == 'd':
+                #show the inventory; if an item is selected, drop it
+                chosen_item = inventory_menu('Press the key next to an item to drop it, or any other to cancel.\n')
+                if chosen_item is not None:
+                    chosen_item.drop()
 
             if key_char == 'g':
                 #pick up an item
