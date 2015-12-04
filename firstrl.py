@@ -398,6 +398,10 @@ def render_all():
     render_bar(1, 1, BAR_WIDTH, 'HP', player.fighter.hp, player.fighter.max_hp,
         libtcod.light_red, libtcod.darker_red)
 
+    #display names of objects under the mouse
+    libtcod.console_set_default_foreground(panel, libtcod.light_gray)
+    libtcod.console_print_ex(panel, 1, 0, libtcod.BKGND_NONE, libtcod.LEFT, get_names_under_mouse())
+
     #blit the contents of "panel" to the root console
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
 
@@ -421,11 +425,23 @@ def player_move_or_attack(dx, dy):
     else:
         player.move(dx, dy)
         fov_recompute = True
+
+def get_names_under_mouse():
+    global mouse
+
+    #return a string with the names of all objects under the mouse
+    (x, y) = (mouse.cx, mouse.cy)
+
+    #create a list with the names of all objects at the mouse's coordinates and in FOV
+    names = [obj.name for obj in objects
+        if obj.x == x and obj.y == y and libtcod.map_is_in_fov(fov_map, obj.x, obj.y)]
+
+    names = ', '.join(names) #join the names, separated by commas
+    return names.capitalize()
     
 def handle_keys():
     global fov_recompute
-
-    key = libtcod.console_wait_for_keypress(True)  #turn-based
+    global key
 
     if key.vk == libtcod.KEY_ENTER and key.lalt:
         #Alt+Enter: toggle fullscreen
@@ -436,19 +452,19 @@ def handle_keys():
 
     #movement keys
     if game_state == 'playing':
-        if libtcod.console_is_key_pressed(libtcod.KEY_UP):
+        if key.vk == libtcod.KEY_UP:
             player_move_or_attack(0, -1)
             fov_recompute = True
 
-        elif libtcod.console_is_key_pressed(libtcod.KEY_DOWN):
+        elif key.vk == libtcod.KEY_DOWN:
             player_move_or_attack(0, 1)
             fov_recompute = True
 
-        elif libtcod.console_is_key_pressed(libtcod.KEY_LEFT):
+        elif key.vk == libtcod.KEY_LEFT:
             player_move_or_attack(-1, 0)
             fov_recompute = True
 
-        elif libtcod.console_is_key_pressed(libtcod.KEY_RIGHT):
+        elif key.vk == libtcod.KEY_RIGHT:
             player_move_or_attack(1, 0)
             fov_recompute = True
         else:
@@ -465,6 +481,8 @@ libtcod.sys_set_fps(LIMIT_FPS)
 
 con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
+mouse = libtcod.Mouse()
+key = libtcod.Key()
 
 fighter_component = Fighter(hp=30, defense=2, power=5, death_function=player_death)
 player = Object(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, '@', 'player', libtcod.white, blocks=True, fighter=fighter_component)
@@ -486,6 +504,8 @@ player_action = None
 message('Welcome stranger! Prepare to perish in the Tombs of the Ancient Kings.', libtcod.red)
 
 while not libtcod.console_is_window_closed():
+
+    libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,key,mouse)
 
     render_all()
     libtcod.console_flush()
