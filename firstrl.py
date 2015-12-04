@@ -540,6 +540,8 @@ def menu(header, options, width):
 
     #calculate total height for the header (after auto-wrap) and one line per option
     header_height = libtcod.console_get_height_rect(con, 0, 0, width, SCREEN_HEIGHT, header)
+    if header == '':
+        header_height = 0
     height = len(options) + header_height
 
     #create an off-screen console that represents the menu's window
@@ -566,6 +568,9 @@ def menu(header, options, width):
     #present the root console to the player and wait for a keypress
     libtcod.console_flush()
     key = libtcod.console_wait_for_keypress(True)
+
+    if key.vk == libtcod.KEY_ENTER and key.lalt:  #(special case) Alt+Enter: toggle fullscreen
+        libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
 
     #convert the ASCII code to an index; if it corresponds to an option, return it
     index = key.c - ord('a')
@@ -747,6 +752,29 @@ libtcod.sys_set_fps(LIMIT_FPS)
 con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
 panel = libtcod.console_new(SCREEN_WIDTH, PANEL_HEIGHT)
 
+def main_menu():
+    img = libtcod.image_load('main_menu.jpg')
+
+    while not libtcod.console_is_window_closed():
+        #show the background image, at twice the regular console resolution
+        libtcod.image_blit_2x(img, 0, 0, 0)
+
+        #show the game's title, and some credits!
+        libtcod.console_set_default_foreground(0, libtcod.light_yellow)
+        libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2-4, libtcod.BKGND_NONE, libtcod.CENTER,
+            'TOMBS OF THE ANCIENT KINGS')
+        libtcod.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT-2, libtcod.BKGND_NONE, libtcod.CENTER,
+            'By Jotaf')
+
+        #show options and wait for the player's choice
+        choice = menu('', ['Play a new game', 'Continue last game', 'Quit'], 24)
+
+        if choice == 0: #new game
+            new_game()
+            play_game()
+        elif choice == 2: #quit
+            break
+
 def new_game():
     global player, inventory, game_msgs, game_state
 
@@ -770,6 +798,8 @@ def new_game():
 def initialize_fov():
     global fov_recompute, fov_map
     fov_recompute = True
+
+    libtcod.console_clear(con)
 
     #create the FOV map, according to the generated map
     fov_map = libtcod.map_new(MAP_WIDTH, MAP_HEIGHT)
@@ -806,5 +836,4 @@ def play_game():
                 if object.ai:
                     object.ai.take_turn()
 
-new_game()
-play_game()
+main_menu()
