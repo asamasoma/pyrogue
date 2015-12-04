@@ -165,6 +165,10 @@ class Item:
             inventory.append(self.owner)
             objects.remove(self.owner)
             message('You picked up a ' + self.owner.name + '!', libtcod.green)
+            #special case: automatically equip, if the corresponding equipment slot is unused
+            equipment = self.owner.equipment
+            if equipment and get_equipped_in_slot(equipment.slot) is None:
+                equipment.equip()
 
     def drop(self):
         #add to the map and remove from the player's inventory. also, place it at the player's coordinates
@@ -173,6 +177,9 @@ class Item:
         self.owner.x = player.x
         self.owner.y = player.y
         message('You dropped a ' + self.owner.name + '.', libtcod.yellow)
+        #special case: if the object has the Equipment component, dequip it before dropping
+        if self.owner.equipment:
+            self.owner.equipment.dequip()
 
     def use(self):
         #special case: if the object has the Equipment component, the "use" action is to equip/dequip
@@ -200,6 +207,10 @@ class Equipment:
             self.equip()
 
     def equip(self):
+        #if the slot is already being used, dequip whatever is there first
+        old_equipment = get_equipped_in_slot(self.slot)
+        if old_equipment is not None:
+            old_equipment.dequip()
         #equip object and show a message about it
         self.is_equipped = True
         message('Equipped ' + self.owner.name + ' on ' + self.slot + '.', libtcod.light_green)
@@ -447,6 +458,12 @@ def is_blocked(x, y):
             return True
 
     return False
+
+def get_equipped_in_slot(slot): #returns the equipment in a slot, or None if it's empty
+    for obj in inventory:
+        if obj.equipment and obj.equipment.slot == slot and obj.equipment.is_equipped:
+            return obj.equipment
+    return None
     
 def create_room(room):
     global map
@@ -726,7 +743,13 @@ def inventory_menu(header):
     if len(inventory) == 0:
         options = ['Inventory is empty.']
     else:
-        options = [item.name for item in inventory]
+        options = []
+        for item in inventory:
+            text = item.name
+            #show additional information, in case it's equipped
+            if item.equipment and item.equipment.is_equipped:
+                text = text + ' (on ' + item.equipment.slot + ')'
+            options.append(text)
 
     index = menu(header, options, INVENTORY_WIDTH)
 
