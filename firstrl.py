@@ -33,6 +33,8 @@ MAX_ROOM_ITEMS = 2
 HEAL_AMOUNT = 4
 LIGHTNING_DAMAGE = 20
 LIGHTNING_RANGE = 5
+FIREBALL_DAMAGE = 12
+FIREBALL_RADIUS = 3
 CONFUSE_NUM_TURNS = 10
 CONFUSE_RANGE = 8
 
@@ -107,6 +109,10 @@ class Object:
         dx = int(round(dx / distance))
         dy = int(round(dy / distance))
         self.move(dx, dy)
+
+    def distance(self, x, y):
+        #return the distance to some coordinates
+        return math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
 
     def distance_to(self, other):
         #return the distance to another object
@@ -242,6 +248,44 @@ def monster_death(monster):
     monster.name = 'remains of ' + monster.name
     monster.send_to_back()
 
+def player_move_or_attack(dx, dy):
+    global fov_recompute
+
+    #the coordinates the player is moving to/attacking
+    x = player.x + dx
+    y = player.y + dy
+
+    #try to find an attackable object there
+    target = None
+    for object in objects:
+        if object.fighter and object.x == x and object.y == y:
+            target = object
+            break
+
+    #attack if target found, move otherwise
+    if target is not None:
+        player.fighter.attack(target)
+    else:
+        player.move(dx, dy)
+        fov_recompute = True
+
+def target_tile(max_range=None):
+    #return the position of a tile left-clicked in player's FOV (optionally)
+    global key, mouse
+    while True:
+        #render the screen. this erases the inventory and shows the names of objects under the mouse.
+        libtcod.console_flush()
+        libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS|libtcod.EVENT_MOUSE,key,mouse)
+        render_all()
+
+        (x, y) = (mouse.cx, mouse.cy)
+
+        if (mouse.lbutton_pressed and libtcod.map_is_in_fov(fov_map, x, y) and
+            (max_range is None or player.distance(x, y) <= max_range)):
+            return (x, y)
+        if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
+            return (None, None)  #cancel if the player right-clicked or pressed Escape
+
 def cast_heal():
     #heal the player
     if player.fighter.hp == player.fighter.max_hp:
@@ -262,6 +306,18 @@ def cast_lightning():
     message('A lightning bolt strikes the ' + monster.name + ' with a loud thunder! The damage is '
         + str(LIGHTNING_DAMAGE) + ' hit points.', libtcod.light_blue)
     monster.fighter.take_damage(LIGHTNING_DAMAGE)
+
+def cast_fireball():
+    #ask the player for a target tile to throw a fireball at
+    message('Left-click a target tile for the fireball, or right-click to cancel.', libtcod.light_cyan)
+    (x, y) = target_tile()
+    if x is None: return 'cancelled'
+    message('The fireball explodes, burning everything within ' + str(FIREBALL_RADIUS) + ' tiles!', libtcod.orange)
+
+    for obj in objects:  #damage every fighter in range, including the player
+        if obj.distance(x, y) <= FIREBALL_RADIUS and obj.fighter:
+            message('The ' + obj.name + ' gets burned for ' + str(FIREBALL_DAMAGE) + ' hit points.', libtcod.orange)
+            obj.fighter.take_damage(FIREBALL_DAMAGE)
 
 def cast_confuse():
     #find closest enemy in-range and confuse it
@@ -364,12 +420,16 @@ def place_objects(room):
                 #create a healing potion (70% chance)
                 item_component = Item(use_function=cast_heal)
                 item = Object(x, y, '!', 'healing potion', libtcod.violet, item=item_component)
-            elif dice < 70+15:
-                #create a lightning bolt scroll (15% chance)
+            elif dice < 70+10:
+                #create a lightning bolt scroll (10% chance)
                 item_component = Item(use_function=cast_lightning)
                 item = Object(x, y, '#', 'scroll of lightning bolt', libtcod.light_yellow, item=item_component)
+            elif dice < 70+10+10:
+                #create a fireball scroll (10% chance)
+                item_component = Item(use_function=cast_fireball)
+                item = Object(x, y, '#', 'scroll of fireball', libtcod.light_yellow, item=item_component)
             else:
-                #create a confuse scroll (15% chance)
+                #create a confuse scroll (10% chance)
                 item_component = Item(use_function=cast_confuse)
                 item = Object(x, y, '#', 'scroll of confusion', libtcod.light_yellow, item=item_component)
 
@@ -587,27 +647,6 @@ def render_all():
 
     #blit the contents of "panel" to the root console
     libtcod.console_blit(panel, 0, 0, SCREEN_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
-
-def player_move_or_attack(dx, dy):
-    global fov_recompute
-
-    #the coordinates the player is moving to/attacking
-    x = player.x + dx
-    y = player.y + dy
-
-    #try to find an attackable object there
-    target = None
-    for object in objects:
-        if object.fighter and object.x == x and object.y == y:
-            target = object
-            break
-
-    #attack if target found, move otherwise
-    if target is not None:
-        player.fighter.attack(target)
-    else:
-        player.move(dx, dy)
-        fov_recompute = True
 
 def get_names_under_mouse():
     global mouse
