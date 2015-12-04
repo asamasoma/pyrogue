@@ -538,7 +538,7 @@ def next_level():
 
     #advance to the next level
     message('You take a moment to rest, and recover your strength.', libtcod.light_violet)
-    player.fighter.heal(player.figther.max_hp / 2) #heal the player by 50%
+    player.fighter.heal(player.fighter.max_hp / 2) #heal the player by 50%
 
     message('After a rare moment of peace, you descend deeper into the heart of the dungeon...', libtcod.red)
 
