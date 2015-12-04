@@ -1,6 +1,7 @@
 import libtcodpy as libtcod
 import math
 import textwrap
+import shelve
 
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -577,6 +578,9 @@ def menu(header, options, width):
     if index >= 0 and index < len(options): return index
     return None
 
+def msgbox(text, width=50):
+    menu(text, [], width) #use menu() as a sort of "message box"
+
 def inventory_menu(header):
     #show a menu with each item of the inventory as an option
     if len(inventory) == 0:
@@ -772,6 +776,14 @@ def main_menu():
         if choice == 0: #new game
             new_game()
             play_game()
+
+        if choice == 1: #load last game
+            try:
+                load_game()
+            except:
+                msgbox('\n No saved games to load.\n', 24)
+                continue
+            play_game()
         elif choice == 2: #quit
             break
 
@@ -829,11 +841,38 @@ def play_game():
         #handle keys and exit game if needed
         player_action = handle_keys()
         if player_action == 'exit':
+            save_game()
             break
 
         if game_state == 'playing' and player_action != 'none':
             for object in objects:
                 if object.ai:
                     object.ai.take_turn()
+
+def load_game():
+    #open the previously saved shelve and load the game data
+    global map, objects, player, inventory, game_msgs, game_state
+
+    file = shelve.open('savegame', 'r')
+    map = file['map']
+    objects = file['objects']
+    player = objects[file['player_index']] #get index of player in objects list and access it
+    inventory = file['inventory']
+    game_msgs = file['game_msgs']
+    game_state = file['game_state']
+    file.close()
+
+    initialize_fov()
+
+def save_game():
+    #open a new empty shelve (possibly overwriting the old one) to write the game data
+    file = shelve.open('savegame', 'n')
+    file['map'] = map
+    file['objects'] = objects
+    file['player_index'] = objects.index(player) #index of player in the objects list
+    file['inventory'] = inventory
+    file['game_msgs'] = game_msgs
+    file['game_state'] = game_state
+    file.close()
 
 main_menu()
